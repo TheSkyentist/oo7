@@ -106,14 +106,18 @@ impl PamListener {
         }
     }
 
-    /// Start the PAM listener
-    pub async fn start(self) -> Result<(), Error> {
+    /// Bind the PAM listener socket synchronously, before D-Bus setup.
+    /// Greeters like `ly` connect as soon as the D-Bus name is acquired,
+    /// which used to race a socket bound from a spawned task, and
+    /// usually win, since D-Bus setup has no I/O in the way.
+    pub fn bind(&self) -> Result<UnixListener, Error> {
         // Remove old socket if it exists
         if self.socket_path.exists() {
-            tokio::fs::remove_file(&self.socket_path).await?;
+            std::fs::remove_file(&self.socket_path)?;
         }
 
-        let listener = UnixListener::bind(&self.socket_path)?;
+        let listener = std::os::unix::net::UnixListener::bind(&self.socket_path)?;
+        listener.set_nonblocking(true)?;
 
         tracing::info!("PAM listener started on {}", self.socket_path.display());
 
@@ -121,6 +125,11 @@ impl PamListener {
         let perms = std::fs::Permissions::from_mode(0o600);
         std::fs::set_permissions(&self.socket_path, perms)?;
 
+        Ok(UnixListener::from_std(listener)?)
+    }
+
+    /// Accept connections on an already-bound listener in a loop.
+    pub async fn serve(self, listener: UnixListener) -> Result<(), Error> {
         let listener = Arc::new(listener);
 
         // Accept connections in a loop

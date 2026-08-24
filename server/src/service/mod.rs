@@ -598,13 +598,15 @@ impl Service {
 
         let service = Self::new(data_dir, pam_socket);
 
-        // Start PAM listener early so it can buffer secrets arriving before
-        // D-Bus is ready (e.g. during PAM-initiated login startup).
+        // Bind the PAM socket before D-Bus is set up, so a PAM module
+        // connecting as soon as the service is reported started can
+        // never race an unbound socket.
         tracing::info!("Starting PAM listener");
         let pam_listener = crate::pam_listener::PamListener::new(service.clone());
         let pam_listener_replay = pam_listener.clone();
+        let pam_socket = pam_listener.bind()?;
         tokio::spawn(async move {
-            if let Err(e) = pam_listener.start().await {
+            if let Err(e) = pam_listener.serve(pam_socket).await {
                 tracing::error!("PAM listener error: {}", e);
             }
         });

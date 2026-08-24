@@ -86,8 +86,9 @@ async fn pam_migrates_v0_keyrings() -> Result<(), Box<dyn std::error::Error>> {
 
     let pam_listener = PamListener::new(setup.server.clone());
     let socket_path = pam_listener.socket_path.clone();
+    let listener = pam_listener.bind().expect("failed to bind PAM listener");
     tokio::spawn(async move {
-        let _ = pam_listener.start().await;
+        let _ = pam_listener.serve(listener).await;
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
@@ -180,8 +181,9 @@ async fn pam_unlocks_locked_collections() -> Result<(), Box<dyn std::error::Erro
 
     let pam_listener = PamListener::new(setup.server.clone());
     let socket_path = pam_listener.socket_path.clone();
+    let listener = pam_listener.bind().expect("failed to bind PAM listener");
     tokio::spawn(async move {
-        let _ = pam_listener.start().await;
+        let _ = pam_listener.serve(listener).await;
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
@@ -249,8 +251,9 @@ async fn pam_change_password() -> Result<(), Box<dyn std::error::Error>> {
 
     let pam_listener = PamListener::new(setup.server.clone());
     let socket_path = pam_listener.socket_path.clone();
+    let listener = pam_listener.bind().expect("failed to bind PAM listener");
     tokio::spawn(async move {
-        let _ = pam_listener.start().await;
+        let _ = pam_listener.serve(listener).await;
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
